@@ -1,0 +1,45 @@
+name:            message-parser
+version:         0.1
+synopsis:        Quasiquoters for getting AttoLisp and Aeson parser for messages
+license:         BSD3
+author:          Alejandro Serrano
+maintainer:      trupill@gmail.com
+build-type:      Simple
+cabal-version:   >=1.2
+
+
+library
+  hs-source-dirs:  src
+  exposed-modules: Data.Message.Parser.Lisp,
+                   Data.Message.Parser.Json
+  other-modules:   Data.Message.Parser.Util,
+                   Data.Message.Parser.TH
+  build-depends:   base >= 4,
+                   MissingH,
+                   parsec >= 3,
+                   atto-lisp,
+                   aeson,
+                   template-haskell,
+                   text,
+                   bytestring,
+                   vector
+  ghc-options:     -Wall
+
+executable example
+  hs-source-dirs:  src
+  main-is:         Main.hs
+  other-modules:   Data.Message.Parser.Lisp,
+                   Data.Message.Parser.Json,
+                   Data.Message.Parser.Util,
+                   Data.Message.Parser.TH
+  build-depends:   base >= 4,
+                   MissingH,
+                   parsec >= 3,
+                   atto-lisp,
+                   aeson,
+                   template-haskell,
+                   text,
+                   bytestring,
+                   vector
+  ghc-options:     -Wall
+  
