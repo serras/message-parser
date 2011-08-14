@@ -5,7 +5,9 @@ module Data.Message.Parser.Lisp where
 import Data.Message.Parser.TH
 import Data.Message.Parser.Util
 
+import Control.Applicative (pure, empty, (<|>))
 import Data.AttoLisp
+import Data.List (partition)
 import qualified Data.Text as T
 import Language.Haskell.TH
 
@@ -72,4 +74,41 @@ deriveToLisp data_name record_name t = do
        |]
   let    [InstanceD [] (AppT toLispT (ConT _TheExample)) [FunD toLispF _nil]] = d
   return [InstanceD [] (AppT toLispT (ConT t  )) [FunD toLispF showbody]]
+
+
+
+deriveFromLisp :: Name -> Q [Dec]
+deriveFromLisp t = do
+  -- Get list of constructors
+  TyConI (DataD _ _ _ constructors _)  <-  reify t
+  
+  let isEmptyClause (NormalC _ fields) = null fields
+      isEmptyClause (RecC    _ fields) = null fields
+      
+      (emptyCl, nonEmptyCl) = partition isEmptyClause constructors
+  
+  nonEmptyVar <- newName "x"
+  
+  let createNonEmptyParser [] = [| empty |]
+      createNonEmptyParser ((NormalC name fields):vs) =
+        let constructorName = nameBase name
+            lispName = ':' : (toDashName constructorName)
+        in  [| (struct (T.pack lispName) $(return (ConE name)) $(return (VarE nonEmptyVar))) 
+                <|> ($(createNonEmptyParser vs)) |]
+      createNonEmptyParser ((RecC name fields):vs) =
+        let constructorName = nameBase name
+            lispName = ':' : (toDashName constructorName)
+        in  [| (struct (T.pack lispName) $(return (ConE name)) $(return (VarE nonEmptyVar)))
+                <|> ($(createNonEmptyParser vs)) |]
+  
+  nonEmptyBody <- clause [varP nonEmptyVar] (normalB (createNonEmptyParser nonEmptyCl)) []
+  showbody <- return [nonEmptyBody]
+ 
+  -- Generate template instance declaration and then replace
+  --   type name and function body with our data
+  d <- [d| instance FromLisp TheExample where
+             parseLisp _ = pure TheExample
+       |]
+  let    [InstanceD [] (AppT fromLispT (ConT _TheExample)) [FunD fromLispF _nil]] = d
+  return [InstanceD [] (AppT fromLispT (ConT t  )) [FunD fromLispF showbody]]
 
